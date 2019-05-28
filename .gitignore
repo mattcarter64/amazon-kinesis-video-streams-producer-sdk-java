@@ -4,3 +4,4 @@
 .settings
 /eclipse-bin/
 .idea
+/target/

@@ -5,346 +5,354 @@ import javax.annotation.Nullable;
 
 import com.amazonaws.kinesisvideo.internal.client.mediasource.MediaSourceConfiguration;
 import com.amazonaws.kinesisvideo.producer.StreamInfo;
+import com.amazonaws.kinesisvideo.producer.TrackInfo;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 /**
- * CameraMediaSourceConfiguration defines common configuration properties for camera media source
+ * CameraMediaSourceConfiguration defines common configuration properties for
+ * camera media source
  */
-@SuppressFBWarnings({"EI_EXPOSE_REP", "URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD"})
+@SuppressFBWarnings({ "EI_EXPOSE_REP", "URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD" })
 public class CameraMediaSourceConfiguration implements MediaSourceConfiguration {
 
-    private static final String MEDIA_SOURCE_DESCRIPTION = "Configuration for a camera media source";
-    public static final String MEDIA_SOURCE_TYPE = "AbstractCameraMediaSource";
+	private static final String MEDIA_SOURCE_DESCRIPTION = "Configuration for a camera media source";
+	public static final String MEDIA_SOURCE_TYPE = "AbstractCameraMediaSource";
 
-    public static class Builder implements MediaSourceConfiguration.Builder<CameraMediaSourceConfiguration> {
+	public static class Builder implements MediaSourceConfiguration.Builder<CameraMediaSourceConfiguration> {
 
-        private String  mMimeType;
-        private int mFrameRate;
-        private int mHorizontalResolution;
-        private int mVerticalResolution;
-        private String mOutputFileName;
-        private String mCameraId;
-        private int mCameraFacing;
-        private int mCameraOrientation;
-        private int mEncodingBitrate;
-        private boolean mIsEncoderHardwareAccelerated;
-        private int mGopDurationMillis;
-        private byte[] mCodecPrivateData;
-        private long mFrameTimescale;
-        private StreamInfo.NalAdaptationFlags mNalAdaptationFlags;
-        private boolean mIsAbsoluteTimecode;
-        private int mRetentionPeriodInHours;
+		private String mMimeType;
+		private int mFrameRate;
+		private int mHorizontalResolution;
+		private int mVerticalResolution;
+		private String mOutputFileName;
+		private String mCameraId;
+		private int mCameraFacing;
+		private int mCameraOrientation;
+		private int mEncodingBitrate;
+		private boolean mIsEncoderHardwareAccelerated;
+		private int mGopDurationMillis;
+		private byte[] mCodecPrivateData;
+		private long mFrameTimescale;
+		private StreamInfo.NalAdaptationFlags mNalAdaptationFlags;
+		private boolean mIsAbsoluteTimecode;
+		private int mRetentionPeriodInHours;
 
-        public Builder withEncodingMimeType(final String mimeType) {
-            mMimeType = mimeType;
-            return this;
-        }
+		public Builder withEncodingMimeType(final String mimeType) {
+			mMimeType = mimeType;
+			return this;
+		}
 
-        public Builder withRetentionPeriodInHours(final int retentionPeriodInHours) {
-            mRetentionPeriodInHours = retentionPeriodInHours;
-            return this;
-        }
+		public Builder withRetentionPeriodInHours(final int retentionPeriodInHours) {
+			mRetentionPeriodInHours = retentionPeriodInHours;
+			return this;
+		}
 
-        public Builder withFrameRate(final int frameRate) {
-            mFrameRate = frameRate;
-            return this;
-        }
+		public Builder withFrameRate(final int frameRate) {
+			mFrameRate = frameRate;
+			return this;
+		}
 
-        public Builder withFileOutput(final String outputFileName) {
-            mOutputFileName = outputFileName;
-            return this;
-        }
+		public Builder withFileOutput(final String outputFileName) {
+			mOutputFileName = outputFileName;
+			return this;
+		}
 
-        public Builder withCameraId(final String cameraId) {
-            mCameraId = cameraId;
-            return this;
-        }
+		public Builder withCameraId(final String cameraId) {
+			mCameraId = cameraId;
+			return this;
+		}
 
-        public Builder withHorizontalResolution(final int horizontalResolution) {
-            mHorizontalResolution = horizontalResolution;
-            return this;
-        }
+		public Builder withHorizontalResolution(final int horizontalResolution) {
+			mHorizontalResolution = horizontalResolution;
+			return this;
+		}
 
-        public Builder withVerticalResolution(final int verticalResolution) {
-            mVerticalResolution = verticalResolution;
-            return this;
-        }
+		public Builder withVerticalResolution(final int verticalResolution) {
+			mVerticalResolution = verticalResolution;
+			return this;
+		}
 
-        public Builder withCameraFacing(final int facing) {
-            mCameraFacing = facing;
-            return this;
-        }
+		public Builder withCameraFacing(final int facing) {
+			mCameraFacing = facing;
+			return this;
+		}
 
-        public Builder withCameraOrientation(final int orientation) {
-            mCameraOrientation = orientation;
-            return this;
-        }
+		public Builder withCameraOrientation(final int orientation) {
+			mCameraOrientation = orientation;
+			return this;
+		}
 
-        public Builder withEncodingBitRate(final int bitrate) {
-            mEncodingBitrate = bitrate;
-            return this;
-        }
+		public Builder withEncodingBitRate(final int bitrate) {
+			mEncodingBitrate = bitrate;
+			return this;
+		}
 
-        public Builder withIsEncoderHardwareAccelerated(final boolean isAccelerated) {
-            mIsEncoderHardwareAccelerated = isAccelerated;
-            return this;
-        }
+		public Builder withIsEncoderHardwareAccelerated(final boolean isAccelerated) {
+			mIsEncoderHardwareAccelerated = isAccelerated;
+			return this;
+		}
 
-        public Builder withCodecPrivateData(final byte[] privateData) {
-            mCodecPrivateData = privateData;
-            return this;
-        }
+		public Builder withCodecPrivateData(final byte[] privateData) {
+			mCodecPrivateData = privateData;
+			return this;
+		}
 
-        public Builder withFrameTimeScale(final long timescale) {
-            mFrameTimescale = timescale;
-            return this;
-        }
+		public Builder withFrameTimeScale(final long timescale) {
+			mFrameTimescale = timescale;
+			return this;
+		}
 
-        public Builder withGopDurationMillis(final int gopDuration) {
-            mGopDurationMillis = gopDuration;
-            return this;
-        }
+		public Builder withGopDurationMillis(final int gopDuration) {
+			mGopDurationMillis = gopDuration;
+			return this;
+		}
 
-        public Builder withNalAdaptationFlags(final StreamInfo.NalAdaptationFlags nalAdaptationFlags) {
-            mNalAdaptationFlags = nalAdaptationFlags;
-            return this;
-        }
+		public Builder withNalAdaptationFlags(final StreamInfo.NalAdaptationFlags nalAdaptationFlags) {
+			mNalAdaptationFlags = nalAdaptationFlags;
+			return this;
+		}
 
-        public Builder withIsAbsoluteTimecode(final boolean isAbsoluteTimecode) {
-            mIsAbsoluteTimecode = isAbsoluteTimecode;
-            return this;
-        }
+		public Builder withIsAbsoluteTimecode(final boolean isAbsoluteTimecode) {
+			mIsAbsoluteTimecode = isAbsoluteTimecode;
+			return this;
+		}
 
-        public String getMimeType() {
-            return mMimeType;
-        }
+		public Builder withTrackInfoList(TrackInfo[] createTrackInfoList) {
+			// TODO Auto-generated method stub
+			return this;
+		}
 
-        public int getFrameRate() {
-            return mFrameRate;
-        }
+		public String getMimeType() {
+			return mMimeType;
+		}
 
-        public int getmRetentionPeriodInHours() {
-            return mRetentionPeriodInHours;
-        }
+		public int getFrameRate() {
+			return mFrameRate;
+		}
 
-        public int getHorizontalResolution() {
-            return mHorizontalResolution;
-        }
+		public int getmRetentionPeriodInHours() {
+			return mRetentionPeriodInHours;
+		}
 
-        public int getVerticalResolution() {
-            return mVerticalResolution;
-        }
+		public int getHorizontalResolution() {
+			return mHorizontalResolution;
+		}
 
-        public String getOutputFileName() {
-            return mOutputFileName;
-        }
+		public int getVerticalResolution() {
+			return mVerticalResolution;
+		}
 
-        public String getCameraId() {
-            return mCameraId;
-        }
+		public String getOutputFileName() {
+			return mOutputFileName;
+		}
 
-        public int getCameraFacing() {
-            return mCameraFacing;
-        }
+		public String getCameraId() {
+			return mCameraId;
+		}
 
-        public int getCameraOrientation() {
-            return mCameraOrientation;
-        }
+		public int getCameraFacing() {
+			return mCameraFacing;
+		}
 
-        public int getEncodingBitrate() {
-            return mEncodingBitrate;
-        }
+		public int getCameraOrientation() {
+			return mCameraOrientation;
+		}
 
-        public boolean isEncoderHardwareAccelerated() {
-            return mIsEncoderHardwareAccelerated;
-        }
+		public int getEncodingBitrate() {
+			return mEncodingBitrate;
+		}
 
-        public int getGopDurationMillis() {
-            return mGopDurationMillis;
-        }
+		public boolean isEncoderHardwareAccelerated() {
+			return mIsEncoderHardwareAccelerated;
+		}
 
-        public byte[] getCodecPrivateData() {
-            return mCodecPrivateData;
-        }
+		public int getGopDurationMillis() {
+			return mGopDurationMillis;
+		}
 
-        public long getFrameTimescale() {
-            return mFrameTimescale;
-        }
+		public byte[] getCodecPrivateData() {
+			return mCodecPrivateData;
+		}
 
-        public StreamInfo.NalAdaptationFlags getNalAdaptationFlags() {
-            return mNalAdaptationFlags;
-        }
+		public long getFrameTimescale() {
+			return mFrameTimescale;
+		}
 
-        @Override
-        public CameraMediaSourceConfiguration build() {
-            return new CameraMediaSourceConfiguration(this);
-        }
-    }
+		public StreamInfo.NalAdaptationFlags getNalAdaptationFlags() {
+			return mNalAdaptationFlags;
+		}
 
-    private final Builder mBuilder;
+		@Override
+		public CameraMediaSourceConfiguration build() {
+			return new CameraMediaSourceConfiguration(this);
+		}
+	}
 
-    public CameraMediaSourceConfiguration(final Builder builder) {
-        mBuilder = builder;
-    }
+	private final Builder mBuilder;
 
-    @Override
-    public String getMediaSourceType() {
-        return MEDIA_SOURCE_TYPE;
-    }
+	public CameraMediaSourceConfiguration(final Builder builder) {
+		mBuilder = builder;
+	}
 
-    @Override
-    public String getMediaSourceDescription() {
-        return MEDIA_SOURCE_DESCRIPTION;
-    }
+	@Override
+	public String getMediaSourceType() {
+		return MEDIA_SOURCE_TYPE;
+	}
 
-    public static CameraMediaSourceConfiguration.Builder builder() {
-        return new CameraMediaSourceConfiguration.Builder();
-    }
+	@Override
+	public String getMediaSourceDescription() {
+		return MEDIA_SOURCE_DESCRIPTION;
+	}
 
-    /**
-     * Returns the ID of the camera
-     *
-     * @return ID of the camera
-     */
-    public String getCameraId() {
-        return mBuilder.mCameraId;
-    }
+	public static CameraMediaSourceConfiguration.Builder builder() {
+		return new CameraMediaSourceConfiguration.Builder();
+	}
 
-    /**
-     * Gets the camera facing front or back.
-     *
-     * @return camera facing front or back.
-     */
-    public int getCameraFacing() {
-        return mBuilder.mCameraFacing;
-    }
+	/**
+	 * Returns the ID of the camera
+	 *
+	 * @return ID of the camera
+	 */
+	public String getCameraId() {
+		return mBuilder.mCameraId;
+	}
 
-    /**
-     * Gets the orientation of the camera in degrees.
-     *
-     * @return orientation of the camera in degrees.
-     */
-    public int getCameraOrientation() {
-        return mBuilder.mCameraOrientation;
-    }
+	/**
+	 * Gets the camera facing front or back.
+	 *
+	 * @return camera facing front or back.
+	 */
+	public int getCameraFacing() {
+		return mBuilder.mCameraFacing;
+	}
 
-    /**
-     * Gets the horizontal resolution.
-     *
-     * @return horizontal resolution
-     */
-    public int getHorizontalResolution() {
-        return mBuilder.mHorizontalResolution;
-    }
+	/**
+	 * Gets the orientation of the camera in degrees.
+	 *
+	 * @return orientation of the camera in degrees.
+	 */
+	public int getCameraOrientation() {
+		return mBuilder.mCameraOrientation;
+	}
 
-    /**
-     * Gets the vertical resolution.
-     *
-     * @return vertical resolution
-     */
-    public int getVerticalResolution() {
-        return mBuilder.mVerticalResolution;
-    }
+	/**
+	 * Gets the horizontal resolution.
+	 *
+	 * @return horizontal resolution
+	 */
+	public int getHorizontalResolution() {
+		return mBuilder.mHorizontalResolution;
+	}
 
-    /**
-     * Gets the output file name.
-     *
-     * @return Output file name
-     */
-    public String getOutputFileName() {
-        return mBuilder.mOutputFileName;
-    }
+	/**
+	 * Gets the vertical resolution.
+	 *
+	 * @return vertical resolution
+	 */
+	public int getVerticalResolution() {
+		return mBuilder.mVerticalResolution;
+	}
 
-    /**
-     * Gets the frame rate of the camera.
-     *
-     * @return Frame rate
-     */
-    public int getFrameRate() {
-        return mBuilder.mFrameRate;
-    }
+	/**
+	 * Gets the output file name.
+	 *
+	 * @return Output file name
+	 */
+	public String getOutputFileName() {
+		return mBuilder.mOutputFileName;
+	}
 
-    /**
-     * Gets the retention period in hours
-     *
-     * @return Retention period in hours
-     */
-    public int getRetentionPeriodInHours() {
-        return mBuilder.mRetentionPeriodInHours;
-    }
+	/**
+	 * Gets the frame rate of the camera.
+	 *
+	 * @return Frame rate
+	 */
+	public int getFrameRate() {
+		return mBuilder.mFrameRate;
+	}
 
-    /**
-     * Gets the encoding bitrate.
-     *
-     * @return bit rate.
-     *
-     */
-    public int getBitRate() {
-        return mBuilder.mEncodingBitrate;
-    }
+	/**
+	 * Gets the retention period in hours
+	 *
+	 * @return Retention period in hours
+	 */
+	public int getRetentionPeriodInHours() {
+		return mBuilder.mRetentionPeriodInHours;
+	}
 
-    /**
-     * Gets the encoder mime type.
-     *
-     * @return encoder mime type
-     */
-    @Nonnull
-    public String getEncoderMimeType() {
-        return mBuilder.mMimeType;
-    }
+	/**
+	 * Gets the encoding bitrate.
+	 *
+	 * @return bit rate.
+	 *
+	 */
+	public int getBitRate() {
+		return mBuilder.mEncodingBitrate;
+	}
 
-    /**
-     * Gets the GOP (group-of-pictures) duration in milliseconds.
-     *
-     * @return GOP duration
-     */
-    public int getGopDurationMillis() {
-        return mBuilder.mGopDurationMillis;
-    }
+	/**
+	 * Gets the encoder mime type.
+	 *
+	 * @return encoder mime type
+	 */
+	@Nonnull
+	public String getEncoderMimeType() {
+		return mBuilder.mMimeType;
+	}
 
-    /**
-     * Whether the encoder is hardware accelerated.
-     *
-     * @return true if encoder is hardware accelerated. false otherwise
-     */
-    public boolean isEndcoderHardwareAccelerated() {
-        return mBuilder.mIsEncoderHardwareAccelerated;
-    }
+	/**
+	 * Gets the GOP (group-of-pictures) duration in milliseconds.
+	 *
+	 * @return GOP duration
+	 */
+	public int getGopDurationMillis() {
+		return mBuilder.mGopDurationMillis;
+	}
 
-    /**
-     * Gets the codec private data.
-     *
-     * @return Codec private data
-     */
-    @Nullable
-    public byte[] getCodecPrivateData() {
-        return mBuilder.mCodecPrivateData;
-    }
+	/**
+	 * Whether the encoder is hardware accelerated.
+	 *
+	 * @return true if encoder is hardware accelerated. false otherwise
+	 */
+	public boolean isEndcoderHardwareAccelerated() {
+		return mBuilder.mIsEncoderHardwareAccelerated;
+	}
 
-    /**
-     * Gets the timescale
-     *
-     * @return timescale
-     */
-    public long getTimeScale() {
-        return mBuilder.mFrameTimescale;
-    }
+	/**
+	 * Gets the codec private data.
+	 *
+	 * @return Codec private data
+	 */
+	@Nullable
+	public byte[] getCodecPrivateData() {
+		return mBuilder.mCodecPrivateData;
+	}
 
-    /**
-     * Get the Nal Adaption Flag
-     *
-     * @return NAL Adaption flag
-     */
-    public StreamInfo.NalAdaptationFlags getNalAdaptationFlags() {
-        return mBuilder.mNalAdaptationFlags;
-    }
+	/**
+	 * Gets the timescale
+	 *
+	 * @return timescale
+	 */
+	public long getTimeScale() {
+		return mBuilder.mFrameTimescale;
+	}
 
-    /**
-     * Get if timecode is absolute or not
-     * @return true if absolute. false otherwise.
-     */
-    public boolean getIsAbsoluteTimecode() {
-        return mBuilder.mIsAbsoluteTimecode;
-    }
+	/**
+	 * Get the Nal Adaption Flag
+	 *
+	 * @return NAL Adaption flag
+	 */
+	public StreamInfo.NalAdaptationFlags getNalAdaptationFlags() {
+		return mBuilder.mNalAdaptationFlags;
+	}
+
+	/**
+	 * Get if timecode is absolute or not
+	 * 
+	 * @return true if absolute. false otherwise.
+	 */
+	public boolean getIsAbsoluteTimecode() {
+		return mBuilder.mIsAbsoluteTimecode;
+	}
 }
