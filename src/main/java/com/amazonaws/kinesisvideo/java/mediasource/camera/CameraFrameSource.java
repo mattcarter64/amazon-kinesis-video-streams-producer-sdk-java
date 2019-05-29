@@ -1,26 +1,27 @@
 package com.amazonaws.kinesisvideo.java.mediasource.camera;
 
 import static org.freedesktop.gstreamer.lowlevel.GstBufferAPI.GSTBUFFER_API;
+import static org.freedesktop.gstreamer.lowlevel.GstStructureAPI.GSTSTRUCTURE_API;
 
-import java.net.URI;
 import java.nio.ByteBuffer;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 
-import org.freedesktop.gstreamer.Bin;
 import org.freedesktop.gstreamer.Buffer;
 import org.freedesktop.gstreamer.BufferFlags;
 import org.freedesktop.gstreamer.Bus;
 import org.freedesktop.gstreamer.Caps;
+import org.freedesktop.gstreamer.Element;
+import org.freedesktop.gstreamer.ElementFactory;
 import org.freedesktop.gstreamer.FlowReturn;
 import org.freedesktop.gstreamer.Gst;
+import org.freedesktop.gstreamer.GstObject;
+import org.freedesktop.gstreamer.Pad;
 import org.freedesktop.gstreamer.Pipeline;
 import org.freedesktop.gstreamer.Sample;
+import org.freedesktop.gstreamer.Structure;
 import org.freedesktop.gstreamer.elements.AppSink;
-import org.freedesktop.gstreamer.elements.AppSrc;
-import org.freedesktop.gstreamer.elements.PlayBin;
+import org.freedesktop.gstreamer.lowlevel.GValueAPI.GValue;
+import org.freedesktop.gstreamer.lowlevel.MainLoop;
 
 import com.amazonaws.kinesisvideo.client.mediasource.CameraMediaSourceConfiguration;
 import com.amazonaws.kinesisvideo.common.logging.Log;
@@ -33,28 +34,23 @@ public class CameraFrameSource {
 
 	private Log logger = new Log(new SysOutLogChannel(), LogLevel.VERBOSE, CameraFrameSource.class.getName());
 
-	public static final int DISCRETENESS_HZ = 25;
+	private static final int DISCRETENESS_HZ = 25;
+	private static final long HUNDREDS_OF_NANOS_IN_MS = 10 * 1000;
+	private static final long FRAME_DURATION_5_MS = 5L;
+	private static final long FRAME_DURATION_10_MS = 10L;
+	private static final long FRAME_DURATION_20_MS = 20L;
 
-	private OnFrameDataAvailable onFrameDataAvailable;
+	private CameraFrameDataAvailable onFrameDataAvailable;
 	private CameraMediaSourceConfiguration configuration;
 	private IpCamera camera;
 	private DiscreteTimePeriodsThrottler throttler;
 	private boolean isRunning;
-	private final ExecutorService executor = Executors.newFixedThreadPool(1);
-
-	private static ArrayBlockingQueue<FrameInfo> processingQueue = new ArrayBlockingQueue<FrameInfo>(1);
 	private static StringBuffer videoCaps = new StringBuffer();
 	private static Semaphore gotCaps = new Semaphore(2);
 	private static Semaphore canSend = new Semaphore(2);
-	private static Semaphore gotEOSPlaybin = new Semaphore(1);
-	private static Semaphore gotEOSPipeline = new Semaphore(1);
-	private static int videoWidth;
-	private static int videoHeight;
-	private static int numPixels;
 	private static boolean sendData = false;
 
-	private static int frameDataSize = (1024 * 1024);
-
+	final MainLoop loop = new MainLoop();
 	private Pipeline pipeline;
 
 	public CameraFrameSource(CameraMediaSourceConfiguration configuration, IpCamera camera) {
@@ -64,8 +60,8 @@ public class CameraFrameSource {
 		throttler = new DiscreteTimePeriodsThrottler(configuration.getFrameRate(), DISCRETENESS_HZ);
 	}
 
-	public void onBytesAvailable(OnFrameDataAvailable createKinesisVideoFrameAndPushToProducer) {
-		this.onFrameDataAvailable = createKinesisVideoFrameAndPushToProducer;
+	public void setOnFrameDataAvailable(CameraFrameDataAvailable onFrameDataAvailable) {
+		this.onFrameDataAvailable = onFrameDataAvailable;
 	}
 
 	public void start() throws Exception {
@@ -74,14 +70,9 @@ public class CameraFrameSource {
 			throw new IllegalStateException("Frame source is already running");
 		}
 
-		// TODO
 		if (!initGstreamer()) {
-			throw new RuntimeException("Unable to initialize ffmpeg");
+			throw new RuntimeException("Unable to initialize gstreamer");
 		}
-		//
-		// if (!connectAndStartStream()) {
-		// throw new RuntimeException("Unable to start stream");
-		// }
 
 		isRunning = true;
 
@@ -96,98 +87,63 @@ public class CameraFrameSource {
 
 		logger.info("initGstreamer: gstreamer init complete");
 
-		Bin videoBin = Gst.parseBinFromDescription("appsink name=videoAppSink", true);
+		AppSink appsink = (AppSink) ElementFactory.make("appsink", "video-output");
 
-		AppSink videoAppSink = (AppSink) videoBin.getElementByName("videoAppSink");
+		Element source = ElementFactory.make("rtspsrc", "source");
 
-		videoAppSink.set("emit-signals", true);
-		videoAppSink.set("async", true);
+		Element depay = ElementFactory.make("rtph264depay", "depay");
 
-		// AppSinkListener videoAppSinkListener = new
-		// AppSinkListener(processingQueue,
-		// videoCaps, gotCaps, logger);
-		AppSinkListener videoAppSinkListener = new AppSinkListener(this, videoCaps, gotCaps, logger);
+		Element filter = ElementFactory.make("capsfilter", "encoder_filter");
 
-		videoAppSink.connect((AppSink.NEW_SAMPLE) videoAppSinkListener);
-
-		// StringBuilder caps = new
-		// StringBuilder("video/x-raw,pixel-aspect-ratio=1/1,");
 		StringBuilder caps = new StringBuilder("video/x-h264,stream-format=avc,alignment=au");
 
-		// if (ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN)
-		// caps.append("format=BGRx");
-		// else
-		// caps.append("format=xRGB");
+		filter.set("caps", new Caps(caps.toString()));
 
-		videoAppSink.setCaps(new Caps(caps.toString()));
+		pipeline = new Pipeline();
 
-		logger.info("initGstreamer: app sink initialized");
+		Bus bus = pipeline.getBus();
+		bus.connect(new Bus.EOS() {
 
-		PlayBin playbin = new PlayBin("playbin");
-		// playbin.setURI(URI.create("rtsp://ip:port/uri"));
-		playbin.setURI(URI.create(camera.composeStreamUrl(StreamType.RTSP)));
-		playbin.setVideoSink(videoBin);
-		// playbin.setAudioSink(null);
+			@Override
+			public void endOfStream(GstObject source) {
+				System.out.println("Reached end of stream");
+				loop.quit();
+			}
 
-		playbin.getBus().connect((Bus.EOS) (source) -> {
-			System.out.println("Received the EOS on the playbin!!!");
-			gotEOSPlaybin.release();
 		});
 
-		logger.info("initGstreamer: playbin initialized");
+		bus.connect(new Bus.ERROR() {
 
-		gotEOSPlaybin.drainPermits();
-		gotCaps.drainPermits();
-		playbin.play();
-
-		logger.info("Processing of RTSP feed started, please wait...");
-
-		AppSrc videoAppSrc = null;
-		// AppSrcListener videoAppSrcListener = null;
-
-		gotCaps.acquire(1);
-
-		// pipeline = (Pipeline) Gst.parseLaunch("appsrc name=videoAppSrc " + "!
-		// videoconvert ! video/x-raw,format=I420 "
-		// + "! x264enc ! h264parse " + "! mpegtsmux name=mux " + "! filesink
-		// name=filesink ");
-
-		// pipeline = (Pipeline) Gst.parseLaunch("appsrc name=videoAppSrc " + "! rtspsrc
-		// " + " ! rtph264depay "
-		// + "! capsfilter " + "! appsink name=videoAppSink ");
-
-		// TODO latest
-		// pipeline = (Pipeline) Gst.parseLaunch("appsrc name=videoAppSrc " + "! rtspsrc
-		// " + " ! rtph264depay "
-		// + "! capsfilter " + "! appsink name=videoAppSink ");
-
-		pipeline = (Pipeline) Gst.parseLaunch(
-				"rtspsrc name=videoAppSrc " + " ! rtph264depay " + "! capsfilter " + "! appsink name=videoAppSink ");
-
-//		videoAppSrc = (AppSrc) pipeline.getElementByName("videoAppSrc");
-//		videoAppSrc.setCaps(new Caps(videoCaps.toString()));
-//		videoAppSrc.set("emit-signals", true);
-
-		// videoAppSrcListener = new AppSrcListener(videoQueue,canSend);
-		// videoAppSrc.connect((AppSrc.NEED_DATA) videoAppSrcListener);
-
-		pipeline.getBus().connect((Bus.EOS) (source) -> {
-			System.out.println("Received the EOS on the pipeline!!!");
-			gotEOSPipeline.release();
+			@Override
+			public void errorMessage(GstObject source, int code, String message) {
+				System.out.println("Error detected");
+				System.out.println("Error source: " + source.getName());
+				System.out.println("Error code: " + code);
+				System.out.println("Message: " + message);
+				loop.quit();
+			}
 		});
 
-		// clearQueue(videoQueue);
-		processingQueue.clear();
-		// videoAppSrcListener.resetSendFlagged();
+		source.set("location", camera.composeStreamUrl(StreamType.RTSP));
+		source.set("short-header", true);
+		source.set("protocols", 4);
 
-		gotEOSPipeline.drainPermits();
-		canSend.drainPermits();
+		PadAddedListener padAddedListener = new PadAddedListener(depay);
+
+		source.connect(padAddedListener);
+
+		appsink.set("emit-signals", true);
+		appsink.set("sync", false);
+
+		AppSinkListener videoAppSinkListener = new AppSinkListener(videoCaps, gotCaps, logger);
+
+		appsink.connect((AppSink.NEW_SAMPLE) videoAppSinkListener);
+
+		pipeline.addMany(source, depay, filter, appsink);
+
+		Element.linkMany(depay, filter, appsink);
 
 		sendData = true;
-
-		// pipeline.play();
-		//
-		// canSend.acquire(1);
 
 		logger.info("initGstreamer: done");
 
@@ -205,50 +161,10 @@ public class CameraFrameSource {
 
 		pipeline.play();
 
+		loop.run();
+
 		canSend.acquire(1);
-
-		// executor.execute(new Runnable() {
-		// @Override
-		// public void run() {
-		// try {
-		// generateFrameAndNotifyListener();
-		// } catch (Throwable e) {
-		// logger.error("startFrameGenerator", e);
-		// }
-		// }
-		// });
 	}
-
-	// private void generateFrameAndNotifyListener() throws IOException {
-	//
-	// logger.info("generateFrameAndNotifyListener: onFrameDataAvailable=" +
-	// onFrameDataAvailable);
-	//
-	// int frameCounter = 0;
-	//
-	// while (isRunning) {
-	// // TODO: Throttler is not limiting first time call when input param
-	// // are the same
-	// throttler.throttle();
-	//
-	// if (onFrameDataAvailable != null) {
-	// ByteBuffer frameData = createKinesisVideoFrameFromCamera(frameCounter);
-	// if (frameData != null) {
-	// onFrameDataAvailable.onFrameDataAvailable(frameData);
-	// frameCounter++;
-	// }
-	// }
-	//
-	// }
-	// }
-
-	// private ByteBuffer createKinesisVideoFrameFromCamera(final long index) throws
-	// IOException {
-	//
-	// logger.debug("createKinesisVideoFrameFromCamera: index=" + index);
-	//
-	// return null;
-	// }
 
 	public class FrameInfo {
 		private int capacity;
@@ -326,23 +242,32 @@ public class CameraFrameSource {
 		}
 	}
 
-	private static final long HUNDREDS_OF_NANOS_IN_MS = 10 * 1000;
-	private static final long FRAME_DURATION_5_MS = 5L;
-	private static final long FRAME_DURATION_10_MS = 10L;
-	private static final long FRAME_DURATION_20_MS = 20L;
+	private class PadAddedListener implements Element.PAD_ADDED {
+
+		private Element dest;
+
+		public PadAddedListener(Element dest) {
+			this.dest = dest;
+		}
+
+		@Override
+		public void padAdded(Element element, Pad pad) {
+			element.link(dest);
+
+			logger.debug("padAdded: linked pad" + pad);
+		}
+
+	}
 
 	private class AppSinkListener implements AppSink.NEW_SAMPLE {
 
-		private ArrayBlockingQueue<FrameInfo> queue;
 		private StringBuffer caps;
 		private Semaphore gotCaps;
 		private boolean capsSet;
 		private Log logger;
-		private CameraFrameSource cameraFrameSource;
 		private int frameCounter;
 
-		public AppSinkListener(CameraFrameSource cameraFrameSource, StringBuffer caps, Semaphore gotCaps, Log logger) {
-			this.cameraFrameSource = cameraFrameSource;
+		public AppSinkListener(StringBuffer caps, Semaphore gotCaps, Log logger) {
 			this.caps = caps;
 			this.gotCaps = gotCaps;
 			capsSet = false;
@@ -350,7 +275,6 @@ public class CameraFrameSource {
 		}
 
 		@Override
-
 		public FlowReturn newSample(AppSink elem) {
 			Sample sample = elem.pullSample();
 
@@ -359,11 +283,30 @@ public class CameraFrameSource {
 
 			if (!capsSet) {
 				caps.append(sample.getCaps().toString());
-				//
-				// Structure capsStruct = sample.getCaps().getStructure(0);
-				// videoWidth = capsStruct.getInteger("width");
-				// videoHeight = capsStruct.getInteger("height");
-				// numPixels = videoWidth * videoHeight;
+
+				Structure codecData = sample.getCaps().getStructure(0);
+
+				GValue value = GSTSTRUCTURE_API.gst_structure_get_value(codecData, "codec_data");
+
+				if (value != null) {
+					logger.debug(
+							"newSample: gvalue=" + value + ", type=" + value.getType() + ", value=" + value.getValue());
+
+					Buffer buffer = (Buffer) value.getValue();
+
+					NativeLong bufferSize = GSTBUFFER_API.gst_buffer_get_size(buffer);
+
+					ByteBuffer bb = buffer.map(false);
+
+					byte[] codecBytes = new byte[bufferSize.intValue()];
+
+					bb.get(codecBytes);
+
+					logger.debug("newSample: buffer=" + buffer + ", size=" + bufferSize.intValue() + ", bb=" + bb
+							+ ", hasArray=" + bb.hasArray() + ", codecBytes=" + codecBytes);
+
+					onFrameDataAvailable.onCodecDataAvailable(codecBytes);
+				}
 
 				capsSet = true;
 				gotCaps.release();
@@ -372,28 +315,15 @@ public class CameraFrameSource {
 			if (sendData) {
 				Buffer srcBuffer = sample.getBuffer();
 
-				NativeLong bufferSize = GSTBUFFER_API.gst_buffer_get_size(srcBuffer);
-
-				if (frameDataSize < bufferSize.intValue()) {
-					frameDataSize *= 2;
-				}
-
-				logger.debug("newSample: bufferSize=" + bufferSize.intValue() + ", frameDataSize=" + frameDataSize);
-
-				// ByteBuffer buffer = ByteBuffer.allocate(frameDataSize);
-				//
-				// buffer.put(srcBuffer.map(false));
-				// buffer.rewind();
+				logBuffer("newSample", srcBuffer);
 
 				ByteBuffer bb = srcBuffer.map(false);
 
-				logger.debug("newSample: getFlags()=" + srcBuffer.getFlags() + ", getFlags().size="
-						+ srcBuffer.getFlags().size() + "delta="
-						+ srcBuffer.getFlags().contains(BufferFlags.DELTA_UNIT));
-
 				CameraFrameInfo frameInfo = new CameraFrameInfo(frameCounter++, bb /* buffer */,
 						!srcBuffer.getFlags().contains(BufferFlags.DELTA_UNIT), srcBuffer.getPresentationTimestamp(),
-						srcBuffer.getDecodeTimestamp(), FRAME_DURATION_5_MS * HUNDREDS_OF_NANOS_IN_MS);
+						srcBuffer.getDecodeTimestamp() != -1 ? srcBuffer.getDecodeTimestamp()
+								: srcBuffer.getPresentationTimestamp(),
+						FRAME_DURATION_5_MS * HUNDREDS_OF_NANOS_IN_MS);
 
 				throttler.throttle();
 
@@ -411,6 +341,17 @@ public class CameraFrameSource {
 			sample.dispose();
 
 			return FlowReturn.OK;
+		}
+
+		private void logBuffer(String tag, Buffer buffer) {
+
+			NativeLong bufferSize = GSTBUFFER_API.gst_buffer_get_size(buffer);
+
+			logger.debug(tag + "buffer: bufferSize=" + bufferSize + ", offset=" + buffer.getOffset() + ", pts="
+					+ buffer.getPresentationTimestamp() + ", dts=" + buffer.getDecodeTimestamp() + ", duration="
+					+ buffer.getDuration() + ", flags=" + buffer.getFlags() + ", delta="
+					+ buffer.getFlags().contains(BufferFlags.DELTA_UNIT));
+
 		}
 	}
 

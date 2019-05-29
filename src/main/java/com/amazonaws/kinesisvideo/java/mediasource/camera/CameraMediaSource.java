@@ -1,9 +1,7 @@
 package com.amazonaws.kinesisvideo.java.mediasource.camera;
 
 import static com.amazonaws.kinesisvideo.producer.StreamInfo.NalAdaptationFlags.NAL_ADAPTATION_FLAG_NONE;
-import static com.amazonaws.kinesisvideo.util.StreamInfoConstants.DEFAULT_BITRATE;
 import static com.amazonaws.kinesisvideo.util.StreamInfoConstants.DEFAULT_GOP_DURATION;
-import static com.amazonaws.kinesisvideo.util.StreamInfoConstants.DEFAULT_REPLAY_DURATION;
 import static com.amazonaws.kinesisvideo.util.StreamInfoConstants.DEFAULT_STALENESS_DURATION;
 import static com.amazonaws.kinesisvideo.util.StreamInfoConstants.DEFAULT_TIMESCALE;
 import static com.amazonaws.kinesisvideo.util.StreamInfoConstants.KEYFRAME_FRAGMENTATION;
@@ -52,7 +50,6 @@ public class CameraMediaSource implements MediaSource {
 	private MediaSourceState mediaSourceState;
 	private MediaSourceSink mediaSourceSink;
 	private CameraFrameSource cameraFrameSource;
-	private int frameIndex;
 	private IpCamera camera = null;
 
 	public CameraMediaSource(String streamName, IpCamera camera) {
@@ -81,9 +78,8 @@ public class CameraMediaSource implements MediaSource {
 		if (!(configuration instanceof CameraMediaSourceConfiguration)) {
 			throw new IllegalStateException("Configuration must be an instance of OpenCvMediaSourceConfiguration");
 		}
-		this.configuration = (CameraMediaSourceConfiguration) configuration;
-		this.frameIndex = 0;
 
+		this.configuration = (CameraMediaSourceConfiguration) configuration;
 	}
 
 	@Override
@@ -92,7 +88,7 @@ public class CameraMediaSource implements MediaSource {
 		mediaSourceState = MediaSourceState.RUNNING;
 
 		cameraFrameSource = new CameraFrameSource(configuration, camera);
-		cameraFrameSource.onBytesAvailable(createKinesisVideoFrameAndPushToProducer());
+		cameraFrameSource.setOnFrameDataAvailable(createCameraFrameDataAvailable());
 
 		try {
 			cameraFrameSource.start();
@@ -101,11 +97,12 @@ public class CameraMediaSource implements MediaSource {
 		}
 	}
 
-	private OnFrameDataAvailable createKinesisVideoFrameAndPushToProducer() {
+	private CameraFrameDataAvailable createCameraFrameDataAvailable() {
 
-		return new OnFrameDataAvailable() {
+		return new CameraFrameDataAvailable() {
 			@Override
 			public void onFrameDataAvailable(final CameraFrameInfo info) {
+
 				final long currentTimeMs = System.currentTimeMillis();
 
 				final int flags = info.isKeyFrame() ? FRAME_FLAG_KEY_FRAME : FRAME_FLAG_NONE;
@@ -122,25 +119,26 @@ public class CameraMediaSource implements MediaSource {
 						return;
 					}
 
-					putFrame(frame);
-				} else {
-					System.out.println("Data not received from frame");
+					try {
+						mediaSourceSink.onFrame(frame);
+					} catch (final KinesisVideoException ex) {
+						throw new RuntimeException(ex);
+					}
 				}
+			}
 
+			@Override
+			public void onCodecDataAvailable(byte[] codecData) {
+
+				logger.debug("onCodecDataAvailable: codecData=" + codecData);
+
+				try {
+					mediaSourceSink.onCodecPrivateData(codecData);
+				} catch (final KinesisVideoException ex) {
+					throw new RuntimeException(ex);
+				}
 			}
 		};
-	}
-
-	private void putFrame(final KinesisVideoFrame kinesisVideoFrame) {
-		try {
-			mediaSourceSink.onFrame(kinesisVideoFrame);
-		} catch (final KinesisVideoException ex) {
-			throw new RuntimeException(ex);
-		}
-	}
-
-	private boolean isKeyFrame() {
-		return frameIndex % configuration.getFrameRate() == 0;
 	}
 
 	@Override
@@ -179,54 +177,6 @@ public class CameraMediaSource implements MediaSource {
 				new Tag[] { new Tag("device", "Test Device"), new Tag("stream", "Test Stream") },
 				NAL_ADAPTATION_FLAG_NONE);
 	}
-
-	// @Override
-	// public StreamInfo getStreamInfo() throws KinesisVideoException {
-	// return new StreamInfo(VERSION_ZERO,
-	// streamName,
-	// StreamInfo.StreamingType.STREAMING_TYPE_REALTIME,
-	// configuration.getContentType(),
-	// NO_KMS_KEY_ID,
-	// configuration.getRetentionPeriodInHours() * HUNDREDS_OF_NANOS_IN_AN_HOUR,
-	// NOT_ADAPTIVE,
-	// configuration.getLatencyPressure(),
-	// DEFAULT_GOP_DURATION,
-	// KEYFRAME_FRAGMENTATION,
-	// USE_FRAME_TIMECODES,
-	// configuration.isAbsoluteTimecode(),
-	// REQUEST_FRAGMENT_ACKS,
-	// RECOVER_ON_FAILURE,
-	// DEFAULT_BITRATE,
-	// configuration.getFps(),
-	// configuration.getBufferDuration(),
-	// configuration.getReplayDuration(),
-	// configuration.getStalenessDuration(),
-	// configuration.getTimecodeScale(),
-	// RECALCULATE_METRICS,
-	// null,
-	// configuration.getNalAdaptationFlag(),
-	// null,
-	// configuration.getTrackInfoList());
-	// }
-
-	// @Override
-	// public StreamInfo getStreamInfo() throws KinesisVideoException {
-	// return new StreamInfo(VERSION_ZERO, streamName,
-	// StreamInfo.StreamingType.STREAMING_TYPE_REALTIME,
-	// configuration.getContentType(), NO_KMS_KEY_ID,
-	// configuration.getRetentionPeriodInHours() * HUNDREDS_OF_NANOS_IN_AN_HOUR,
-	// NOT_ADAPTIVE,
-	// configuration.getLatencyPressure(), DEFAULT_GOP_DURATION,
-	// KEYFRAME_FRAGMENTATION, USE_FRAME_TIMECODES,
-	// configuration.isAbsoluteTimecode(), REQUEST_FRAGMENT_ACKS,
-	// RECOVER_ON_FAILURE, DEFAULT_BITRATE,
-	// configuration.getFps(), configuration.getBufferDuration(),
-	// configuration.getReplayDuration(),
-	// configuration.getStalenessDuration(), configuration.getTimecodeScale(),
-	// RECALCULATE_METRICS, null,
-	// configuration.getNalAdaptationFlag(), null,
-	// configuration.getTrackInfoList());
-	// }
 
 	@Override
 	public MediaSourceSink getMediaSourceSink() {

@@ -1,5 +1,8 @@
 package com.amazonaws.kinesisvideo.java.mediasource.camera;
 
-public interface OnFrameDataAvailable {
+public interface CameraFrameDataAvailable {
+	
     void onFrameDataAvailable(final CameraFrameInfo frameInfo);
+
+    void onCodecDataAvailable(final byte[] codecData);
 }
