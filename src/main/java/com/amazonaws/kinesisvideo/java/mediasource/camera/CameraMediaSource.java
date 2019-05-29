@@ -168,10 +168,10 @@ public class CameraMediaSource implements MediaSource {
 	@Override
 	public StreamInfo getStreamInfo() {
 		return new StreamInfo(VERSION_ZERO, streamName, StreamInfo.StreamingType.STREAMING_TYPE_REALTIME,
-				VIDEO_CONTENT_TYPE, NO_KMS_KEY_ID, RETENTION_ONE_HOUR, NOT_ADAPTIVE, TimeUnit.SECONDS.toMillis(60),
-				DEFAULT_GOP_DURATION, KEYFRAME_FRAGMENTATION, USE_FRAME_TIMECODES, RELATIVE_TIMECODES,
-				REQUEST_FRAGMENT_ACKS, RECOVER_ON_FAILURE, VIDEO_CODEC_ID, "test-track",
-				/* DEFAULT_BITRATE */(4 * 1024 * 1024), configuration.getFrameRate(),
+				VIDEO_CONTENT_TYPE, NO_KMS_KEY_ID, RETENTION_ONE_HOUR * configuration.getRetentionPeriodInHours(),
+				NOT_ADAPTIVE, TimeUnit.SECONDS.toMillis(60), DEFAULT_GOP_DURATION, KEYFRAME_FRAGMENTATION,
+				USE_FRAME_TIMECODES, RELATIVE_TIMECODES, REQUEST_FRAGMENT_ACKS, RECOVER_ON_FAILURE, VIDEO_CODEC_ID,
+				"test-track", /* DEFAULT_BITRATE */(4 * 1024 * 1024), configuration.getFrameRate(),
 				(120 * Time.HUNDREDS_OF_NANOS_IN_A_SECOND), (40 * Time.HUNDREDS_OF_NANOS_IN_A_SECOND),
 				DEFAULT_STALENESS_DURATION, DEFAULT_TIMESCALE, RECALCULATE_METRICS, null,
 				new Tag[] { new Tag("device", "Test Device"), new Tag("stream", "Test Stream") },

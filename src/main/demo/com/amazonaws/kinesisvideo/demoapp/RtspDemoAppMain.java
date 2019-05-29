@@ -13,11 +13,11 @@ import com.amazonaws.kinesisvideo.producer.StreamInfo;
 import com.amazonaws.regions.Regions;
 
 public final class RtspDemoAppMain {
-	// Use a different stream name when testing audio/video sample
-	// private static final String STREAM_NAME = "my-stream";
-	private static final String STREAM_NAME = "rtsp-stream";
+
+	private static final String STREAM_NAME = "jc4728-rtsp-stream";
 	private static final int FPS_25 = 25;
-	private static final int RETENTION_ONE_HOUR = 1;
+//	private static final int RETENTION_ONE_HOUR = 1;
+	private static final int RETENTION_TWENTY_FOUR_HOURS = 24;
 
 	private RtspDemoAppMain() {
 		throw new UnsupportedOperationException();
@@ -46,7 +46,7 @@ public final class RtspDemoAppMain {
 		IpCamera camera = new IpCamera("10.87.1.49", "openhabian", "h0meaut0mAt10n", null, null, "/profile1/media.smp");
 
 		final CameraMediaSourceConfiguration configuration = new CameraMediaSourceConfiguration.Builder()
-				.withFrameRate(FPS_25).withRetentionPeriodInHours(RETENTION_ONE_HOUR).withCameraId("cam1")
+				.withFrameRate(FPS_25).withRetentionPeriodInHours(RETENTION_TWENTY_FOUR_HOURS).withCameraId("cam1")
 				.withIsEncoderHardwareAccelerated(false).withEncodingMimeType("video/avc")
 				.withNalAdaptationFlags(StreamInfo.NalAdaptationFlags.NAL_ADAPTATION_FLAG_NONE)
 				.withIsAbsoluteTimecode(false).withEncodingBitRate(200000).withHorizontalResolution(1280)
