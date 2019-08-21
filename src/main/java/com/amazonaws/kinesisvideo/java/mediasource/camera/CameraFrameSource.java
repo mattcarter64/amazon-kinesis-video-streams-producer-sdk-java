@@ -106,7 +106,7 @@ public class CameraFrameSource {
 
 			@Override
 			public void endOfStream(GstObject source) {
-				System.out.println("Reached end of stream");
+				logger.info("Reached end of stream");
 				loop.quit();
 			}
 
@@ -116,10 +116,7 @@ public class CameraFrameSource {
 
 			@Override
 			public void errorMessage(GstObject source, int code, String message) {
-				System.out.println("Error detected");
-				System.out.println("Error source: " + source.getName());
-				System.out.println("Error code: " + code);
-				System.out.println("Message: " + message);
+				logger.error("Error detected. source: " + source.getName() + ", code: " + code + ", message: " + message);
 				loop.quit();
 			}
 		});
